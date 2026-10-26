@@ -86,6 +86,10 @@ static void run_kernel(const char *name, kernel_fn fn) {
 
 // care only about this --> change length
 int main(void) {
+  // try:
+  // 1024
+  // 16384
+  // 1048576
   length = 1048576;
 
   // allocate memory

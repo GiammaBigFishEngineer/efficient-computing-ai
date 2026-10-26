@@ -2,6 +2,9 @@
 
 void gemm_tiled(const float *a, const float *b, float *c, size_t m, size_t n,
                 size_t k, size_t tile) {
+
+  // NOT OPTIMIZED YET --> NEED TO USE NEON!
+
   // Tile sizes, available to all the loops below
   // const size_t t_r_a = 2;
   // const size_t t_c_b = 1;
