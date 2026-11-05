@@ -75,3 +75,4 @@ void gemm_batched_omp_tiles(const float *a, const float *b, float *c,
         c[i] = 0.0f;
     }
 }
+/* Questo è un test per controllare i diritti di accesso*/
