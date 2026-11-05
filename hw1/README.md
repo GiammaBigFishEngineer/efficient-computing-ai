@@ -29,4 +29,4 @@ sudo apt install python3-matplotlib zip   # once
 GROUP=<n> ./run_pi.sh                      # build, test, 2 runs, analysis, PDF, zip
 ```
 
-`analysis/analyze.py` computes median latency as the median of the per-run medians, and std as the standard deviation of the per-run medians. The CSV does not store individual samples, so more runs (`RUNS=5`) give a more meaningful std. The report `HW1_GroupN.tex` reads `analysis/results_table.tex` and the plots automatically.
+`analysis/analyze.py` computes median latency as the median of the per-run medians, and std as the standard deviation of the per-run medians. The CSV does not store individual samples, so more runs (`RUNS=5`) give a more meaningful std. `--report HW1_Group<n>.tex` (done by `run_pi.sh`) writes the numbers directly into the report table between the `% BEGIN RESULTS` / `% END RESULTS` markers. The plots are included from `analysis/*.png` when present.

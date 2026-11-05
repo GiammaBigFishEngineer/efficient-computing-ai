@@ -55,8 +55,8 @@ Lo script esegue in ordine:
 1. `make clean` e compilazione di benchmark e test.
 2. `./src/sparse_gemm/test_kernel`: tutte le righe devono essere `PASS`. Se ce n'è una `FAIL`, lo script si ferma.
 3. `RUNS` esecuzioni del benchmark, salvate in `results_run1.csv`, `results_run2.csv`, …
-4. `analysis/analyze.py`, che genera `analysis/summary.md`, `summary.csv`, `results_table.tex` e 3 grafici `.png`.
-5. La creazione di `HW1_Group7.tex` con il numero del gruppo e la compilazione del PDF, se sul Pi c'è `pdflatex`.
+4. La creazione di `HW1_Group7.tex` dal template, con il numero del gruppo. Se il file esiste già, ad esempio con i nomi già inseriti, non viene sovrascritto.
+5. `analysis/analyze.py`, che genera `analysis/summary.md`, `summary.csv` e 3 grafici `.png`, e **scrive i numeri direttamente nella tabella di `HW1_Group7.tex`**. Poi compila il PDF, se sul Pi c'è `pdflatex`.
 6. `HW1_Group7.zip` con tutti i file da consegnare.
 
 Alla fine sul terminale compare la tabella riassuntiva, la stessa di `analysis/summary.md`.
@@ -72,7 +72,8 @@ make src/sparse_gemm/test_kernel
 ./src/sparse_gemm/test_kernel
 ./src/sparse_gemm/benchmark --output results_run1.csv
 ./src/sparse_gemm/benchmark --output results_run2.csv
-python3 analysis/analyze.py results_run1.csv results_run2.csv -o analysis
+cp HW1_GroupN.tex HW1_Group7.tex        # poi sostituisci N con il numero del gruppo
+python3 analysis/analyze.py results_run1.csv results_run2.csv -o analysis --report HW1_Group7.tex
 cat analysis/summary.md
 ```
 
@@ -88,7 +89,13 @@ scp pi@raspberrypi.local:~/hw1/HW1_Group7.tex .     # creato da run_pi.sh con GR
 pdflatex HW1_Group7.tex && pdflatex HW1_Group7.tex
 ```
 
-Il report legge da solo `analysis/results_table.tex` (la tabella) e `analysis/*.png` (i grafici). La colonna OI è già compilata.
+I numeri della tabella sono scritti **dentro il `.tex`**, tra le righe `% BEGIN RESULTS` e `% END RESULTS`. Il `.tex` funziona quindi anche da solo, ad esempio su Overleaf. I grafici invece vanno caricati insieme, nella cartella `analysis/`. La colonna OI è già compilata.
+
+**Hai già i CSV ma la tabella è vuota?** Non serve rifare i benchmark. Dalla cartella `hw1/` basta:
+
+```bash
+python3 analysis/analyze.py results_run1.csv results_run2.csv -o analysis --report HW1_Group7.tex
+```
 
 **Da completare a mano** in `HW1_Group<n>.tex`: nomi, cognomi e matricole (`Surname Name (sXXXXXX)`). Il numero del gruppo lo inserisce già `run_pi.sh`. Se non usi lo script, copia `HW1_GroupN.tex` in `HW1_Group<n>.tex` e sostituisci a mano `N` con il numero del gruppo.
 
@@ -283,6 +290,8 @@ Spunti per commentare i risultati nel report:
 | `OpenMP setup mismatch` | Hai variabili d'ambiente OpenMP impostate. Esegui `unset OMP_NUM_THREADS OMP_DYNAMIC`. |
 | `matplotlib not installed: skipping plots` | `sudo apt install python3-matplotlib`, poi rilancia solo `analyze.py`. |
 | `pdflatex not found` | Normale sul Pi: compila il PDF sul Mac (sezione 1.5). |
+| Tabella vuota nel `.tex` o nel PDF | Il Pi ha una versione vecchia di `analyze.py`/`run_pi.sh`: fai `git pull` (o rifai scp), poi lancia il comando `--report` della sezione 1.5. |
+| `markers '% BEGIN RESULTS' ... not found` | Il `.tex` è del vecchio formato: cancellalo e rilancia `run_pi.sh`, oppure ricopialo da `HW1_GroupN.tex`. |
 | Tempi molto variabili tra un run e l'altro | Pi troppo caldo o altri programmi aperti: vedi sezione 1.6. |
 | `Permission denied: ./run_pi.sh` | `chmod +x run_pi.sh` |
 
