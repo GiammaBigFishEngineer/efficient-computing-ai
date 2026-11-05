@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Compare NEON formulations of the combined kernel ON THE PI (GCC, -O0).
 # Run from hw1/:   ./experiments/try_combined_variants.sh
+#   only some:     VARIANTS="3 5" ./experiments/try_combined_variants.sh
 # Does not touch src/; binaries and CSVs go to experiments/out/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -25,7 +26,7 @@ name() {
 }
 
 printf "\n%-3s %-22s %-6s %10s %10s %10s\n" "V" "formulation" "test" "T1 (ms)" "T2 (ms)" "T4 (ms)"
-for v in 1 2 3 4 5; do
+for v in ${VARIANTS:-1 2 3 4 5}; do
     $CC $CFLAGS -DVARIANT=$v $COMMON experiments/combined_variants.c \
         src/sparse_gemm/test.c -o "$OUT/test_v$v" $LDFLAGS
     $CC $CFLAGS -DVARIANT=$v $COMMON experiments/combined_variants.c \
@@ -40,5 +41,5 @@ for v in 1 2 3 4 5; do
         "$(get sparse_openmp_tiled_neon_TM4_T4)"
 done
 echo
-echo "Reference (same runs): sparse_tiled_TM4 = $(awk -F, '$2=="sparse_tiled_TM4" {printf "%.1f", $9/1000}' "$OUT/v1.csv") ms," \
-     "sparse_neon = $(awk -F, '$2=="sparse_neon" {printf "%.1f", $9/1000}' "$OUT/v1.csv") ms"
+echo "Reference (same runs): sparse_tiled_TM4 = $(awk -F, '$2=="sparse_tiled_TM4" {printf "%.1f", $9/1000}' "$OUT/v${v}.csv") ms," \
+     "sparse_neon = $(awk -F, '$2=="sparse_neon" {printf "%.1f", $9/1000}' "$OUT/v${v}.csv") ms"

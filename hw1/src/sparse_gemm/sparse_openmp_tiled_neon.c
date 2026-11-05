@@ -28,14 +28,17 @@ static void sparse_row_neon(const float *a_row, const sparse_weights *w,
  *
  * Each OpenMP iteration owns one independent tile of four output rows.
  * For every output-column group it keeps one float32x4_t accumulator per row
- * (acc0..acc3 = the 4x4 output tile). For each stored block the four input
- * values A[i, 4q .. 4q+3] of every tile row are loaded once as a vector
- * (x0..x3). Each 4-value weight row r of the block is loaded once with
- * vld1q_f32 and reused by four FMAs, one per tile row; vfmaq_laneq_f32
- * broadcasts lane r of x_t inside the FMA (same math as
- * vfmaq_f32(acc, vdupq_n_f32(A[i, 4q + r]), wv), but without a separate
- * scalar load + dup per update). The block traversal and ordering are the
- * same as in the other kernels.
+ * (acc0..acc3 = the 4x4 output tile). Each 4-value weight row r of a stored
+ * block is loaded once with vld1q_f32 and reused by four FMAs, one per tile
+ * row. vfmaq_n_f32(acc, wv, x) computes acc + wv * x with the scalar x
+ * broadcast to the four lanes inside the fused multiply-add: the same math as
+ * vfmaq_f32(acc, vdupq_n_f32(x), wv), without a separate dup.
+ *
+ * This formulation was chosen by measurement on the Raspberry Pi 4 with the
+ * course toolchain (GCC, -O0), see experiments/try_combined_variants.sh:
+ * 1-thread latency 26.2 ms vs 29.6 ms (vdupq + vfmaq) and 50.3 ms
+ * (vfmaq_laneq_f32), with linear scaling to 6.6 ms on 4 threads.
+ * The block traversal and ordering are the same as in the other kernels.
  */
 int gemm_sparse_openmp_tiled_neon(const float *a, const sparse_weights *w,
                                   float *c, size_t m)
@@ -72,23 +75,14 @@ int gemm_sparse_openmp_tiled_neon(const float *a, const sparse_weights *w,
                 const size_t k0 = 4 * (size_t)w->block_row_idx[p];
                 const float *w_blk = w->block_values + 16 * p;
 
-                const float32x4_t x0 = vld1q_f32(a0 + k0);
-                const float32x4_t x1 = vld1q_f32(a1 + k0);
-                const float32x4_t x2 = vld1q_f32(a2 + k0);
-                const float32x4_t x3 = vld1q_f32(a3 + k0);
-                float32x4_t wv;
-                wv = vld1q_f32(w_blk + 0);
-                acc0 = vfmaq_laneq_f32(acc0, wv, x0, 0); acc1 = vfmaq_laneq_f32(acc1, wv, x1, 0);
-                acc2 = vfmaq_laneq_f32(acc2, wv, x2, 0); acc3 = vfmaq_laneq_f32(acc3, wv, x3, 0);
-                wv = vld1q_f32(w_blk + 4);
-                acc0 = vfmaq_laneq_f32(acc0, wv, x0, 1); acc1 = vfmaq_laneq_f32(acc1, wv, x1, 1);
-                acc2 = vfmaq_laneq_f32(acc2, wv, x2, 1); acc3 = vfmaq_laneq_f32(acc3, wv, x3, 1);
-                wv = vld1q_f32(w_blk + 8);
-                acc0 = vfmaq_laneq_f32(acc0, wv, x0, 2); acc1 = vfmaq_laneq_f32(acc1, wv, x1, 2);
-                acc2 = vfmaq_laneq_f32(acc2, wv, x2, 2); acc3 = vfmaq_laneq_f32(acc3, wv, x3, 2);
-                wv = vld1q_f32(w_blk + 12);
-                acc0 = vfmaq_laneq_f32(acc0, wv, x0, 3); acc1 = vfmaq_laneq_f32(acc1, wv, x1, 3);
-                acc2 = vfmaq_laneq_f32(acc2, wv, x2, 3); acc3 = vfmaq_laneq_f32(acc3, wv, x3, 3);
+                for (size_t r = 0; r < 4; ++r) {
+                    /* One weight-row load, reused by the four tile rows. */
+                    const float32x4_t wv = vld1q_f32(w_blk + 4 * r);
+                    acc0 = vfmaq_n_f32(acc0, wv, a0[k0 + r]);
+                    acc1 = vfmaq_n_f32(acc1, wv, a1[k0 + r]);
+                    acc2 = vfmaq_n_f32(acc2, wv, a2[k0 + r]);
+                    acc3 = vfmaq_n_f32(acc3, wv, a3[k0 + r]);
+                }
             }
 
             vst1q_f32(c0 + 4 * g, acc0);

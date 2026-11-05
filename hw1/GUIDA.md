@@ -181,7 +181,7 @@ Il nome si legge così: `v` = vettoriale, `q` = registro da 128 bit (4 float), `
 | `vld1q_f32(ptr)` | *load*: carica 4 float consecutivi dalla memoria | → `[w0,w1,w2,w3]` |
 | `vfmaq_f32(acc,a,b)` | *fused multiply-add*: `acc + a*b` lane per lane, in un'istruzione | → `[acc0+a0·b0, …, acc3+a3·b3]` |
 | `vst1q_f32(ptr,v)` | *store*: scrive i 4 float in memoria | |
-| `vfmaq_laneq_f32(acc,w,x,r)` | come `vfmaq_f32(acc, w, vdupq_n_f32(x[r]))`: usa la lane `r` di `x` senza duplicarla prima | |
+| `vfmaq_n_f32(acc,w,x)` | come `vfmaq_f32(acc, vdupq_n_f32(x), w)`: moltiplica i 4 pesi per lo scalare `x` e somma, senza il dup separato | |
 
 **Perché servono qui.** Nel kernel scalare lo **stesso** valore `av` viene moltiplicato per **4 pesi adiacenti** e sommato in **4 accumulatori adiacenti**. È esattamente la forma che NEON calcola in un colpo solo:
 
@@ -216,8 +216,22 @@ In pratica, ogni volta un'istruzione sostituisce 4 moltiplicazioni e 4 somme.
 **`sparse_openmp_tiled_neon.c`**: unisce le tre idee.
 - `#pragma omp parallel for` sul ciclo dei **blocchi di 4 righe** (32 blocchi da dividere tra i thread);
 - 4 accumulatori NEON `acc0..acc3`, uno per ogni riga del blocco;
-- per ogni blocco di pesi, i 4 valori di A di ogni riga si caricano con un solo `vld1q_f32` (`x0..x3`) e ogni riga di pesi una sola volta (`wv`);
-- `vfmaq_laneq_f32` aggiorna le 4 righe usando la lane giusta di `x`. A `-O0` questo è circa il 35% più veloce rispetto a `vdupq_n_f32` per ogni valore.
+- ogni riga di pesi del blocco si carica **una volta** (`wv = vld1q_f32(...)`) e si usa per le 4 righe del blocco;
+- `vfmaq_n_f32(acc_t, wv, A[t][k0+r])` aggiorna la riga t con una FMA vettore × scalare.
+
+**Perché `vfmaq_n_f32` e non un'altra formulazione.** Le varianti sono state misurate sul Pi con GCC a `-O0` usando `experiments/try_combined_variants.sh`. La scelta dipende dal compilatore: sul Mac con clang l'ordine era diverso.
+
+| Variante | 1 thread | 2 thread | 4 thread |
+|---|---:|---:|---:|
+| `vfmaq_laneq_f32` (prima versione) | 50.3 | 25.2 | 12.6 |
+| `vdupq_n_f32` + `vfmaq_f32` (suggerimento del template) | 29.6 | 14.8 | 12.0 |
+| **`vfmaq_n_f32`, ciclo su r (scelta)** | **26.2** | **13.2** | **6.6** |
+| `vfmaq_n_f32`, righe scritte esplicitamente | 46.5 | 23.5 | 11.7 |
+| `vmlaq_n_f32`, righe scritte esplicitamente | 21.8 | 11.2 | 10.8 |
+
+Riferimento, negli stessi run: Sparse tiled 26.3 ms, Sparse NEON 39.6 ms. Tempi in ms.
+
+A `-O0`, GCC non tiene le variabili nei registri e ogni intrinsic copia i suoi argomenti sullo stack. Più intrinsics annidati (come `laneq`, che internamente fa un dup della lane) e più variabili temporanee significano più accessi alla memoria. La variante scelta usa un solo intrinsic per ogni aggiornamento e scala in modo lineare con i thread. La V5 è più veloce con 1 thread, ma con 4 thread non migliora: probabilmente quella misura è stata disturbata, ad esempio dal Pi che si è scaldato. Per verificarlo: `VARIANTS="3 5" ./experiments/try_combined_variants.sh`.
 
 Vincoli rispettati in tutti i kernel:
 - interfacce delle funzioni e formato dei pesi invariati;

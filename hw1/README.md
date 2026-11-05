@@ -11,7 +11,7 @@ Assignment: https://valentinopeluso.github.io/ECAI27/homework/homework-1.html
 | `src/sparse_gemm/sparse_neon.c` | One `float32x4_t` accumulator per (row, 4-column group). For each block row r: `vdupq_n_f32(A[i,4q+r])` × `vld1q_f32(block row r)` via `vfmaq_f32`. One `vst1q_f32` per group. |
 | `src/sparse_gemm/sparse_tiled.c` | Tile of exactly 4 input rows, scalar code (no NEON). Each 4-value weight row is loaded once into locals and reused for all 4 rows, so the weight and index stream is read M/4 times instead of M times. |
 | `src/sparse_gemm/sparse_openmp.c` | Scalar sparse loop with a plain `#pragma omp parallel for` on the output-row loop. Each iteration writes its own row of C, so there are no races. |
-| `src/sparse_gemm/sparse_openmp_tiled_neon.c` | Plain `#pragma omp parallel for` over independent 4-row tiles. Per group it keeps 4 NEON accumulators (the 4×4 output tile). Per block it loads the 4 A values of each row once (`vld1q_f32`) and each weight row once, then uses `vfmaq_laneq_f32` (lane-broadcast FMA) for all 4 rows. |
+| `src/sparse_gemm/sparse_openmp_tiled_neon.c` | Plain `#pragma omp parallel for` over independent 4-row tiles. Per group it keeps 4 NEON accumulators (the 4×4 output tile). Each weight row is loaded once (`vld1q_f32`) and reused by 4 `vfmaq_n_f32` (vector×scalar FMA), one per tile row. This formulation was chosen by measurement on the Pi (GCC -O0), see `experiments/` and GUIDA.md. |
 
 None of the kernels changes the interfaces, the packed BCC weights, or the block order. A trailing partial tile (m % 4 ≠ 0) falls back to a single-row path. This never happens for M = 128.
 
