@@ -1,0 +1,12 @@
+kernel,label,runs,oi_flop_per_byte,median_ms,std_ms,min_ms,max_ms,gflops,speedup_vs_dense_scalar,speedup_vs_sparse_scalar
+dense_scalar,Dense scalar,5,42.667,563.1101,14.5443,532.4896,580.3609,0.119,1.000,0.174
+dense_tiled_neon_openmp_TN8_T4,Dense tiled with NEON and OpenMP,5,42.667,83.4982,3.6529,75.8622,170.2053,0.804,6.744,1.175
+sparse_scalar,Sparse scalar,5,20.885,98.1139,0.2644,96.4418,100.0662,0.171,5.739,1.000
+sparse_neon,Sparse NEON,5,20.885,34.2127,2.4282,34.0027,39.7548,0.490,16.459,2.868
+sparse_tiled_TM4,Sparse tiled,5,20.885,26.3623,0.0373,26.2466,26.5357,0.636,21.360,3.722
+sparse_openmp_T1,Sparse OpenMP (1 thread),5,20.885,94.5535,0.7887,91.2595,95.4276,0.177,5.955,1.038
+sparse_openmp_T2,Sparse OpenMP (2 threads),5,20.885,47.5880,0.1281,46.9221,49.4238,0.353,11.833,2.062
+sparse_openmp_T4,Sparse OpenMP (4 threads),5,20.885,24.0387,0.2901,23.5550,24.8097,0.698,23.425,4.081
+sparse_openmp_tiled_neon_TM4_T1,Sparse Combined (1 thread),5,20.885,26.2297,0.7644,25.1800,27.4072,0.640,21.468,3.741
+sparse_openmp_tiled_neon_TM4_T2,Sparse Combined (2 threads),5,20.885,13.3643,0.3617,12.6892,13.5615,1.255,42.135,7.341
+sparse_openmp_tiled_neon_TM4_T4,Sparse Combined (4 threads),5,20.885,6.5605,0.1166,6.3481,8.2364,2.557,85.833,14.955
