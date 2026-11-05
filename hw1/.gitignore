@@ -5,3 +5,4 @@ src/sparse_gemm/test_kernel
 *.out
 *.synctex.gz
 HW1_Group*.zip
+experiments/out/
