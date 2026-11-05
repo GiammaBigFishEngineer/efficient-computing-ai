@@ -1,0 +1,7 @@
+src/sparse_gemm/benchmark
+src/sparse_gemm/test_kernel
+*.aux
+*.log
+*.out
+*.synctex.gz
+HW1_Group*.zip
