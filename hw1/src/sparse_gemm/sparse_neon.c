@@ -1,18 +1,7 @@
 #include "sparse_gemm.h"
-// #include <stdio.h>
+
 #include <arm_neon.h>
 
-/*
- * 4x4 block-sparse GEMM, one output row at a time, NEON over the 4 columns
- * of each output-column group.
- *
- * For every (row i, group g) pair one float32x4_t accumulator holds
- * C[i, 4g .. 4g+3]. Each stored block p contributes four rank-1 updates:
- * for local row r, the scalar A[i, 4q + r] is broadcast to all four lanes
- * (vdupq_n_f32) and multiplied by the four adjacent block values
- * block_values[16p + 4r .. 16p + 4r + 3] (vld1q_f32), fused with vfmaq_f32.
- * The block traversal order (p, then r) is the same as gemm_sparse_scalar.
- */
 
 int gemm_sparse_neon(const float *a, const sparse_weights *w, float *c, size_t m)
 {

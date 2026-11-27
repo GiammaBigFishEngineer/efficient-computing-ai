@@ -2,12 +2,9 @@
 
 #include <arm_neon.h>
 
-#define TM 4 /* row tile: fixed at four input rows */
+#define TM 4 // row tile: fixed at four input rows
 
-/*
- * Single-row NEON update (same as gemm_sparse_neon). Only used for a trailing
- * partial tile when m is not a multiple of TM (never for M = 128).
- */
+
 static void sparse_row_neon(const float *a_row, const sparse_weights *w,
                             float *c_row) {
     for (size_t g = 0; g < w->n / 4; ++g) {
@@ -22,25 +19,9 @@ static void sparse_row_neon(const float *a_row, const sparse_weights *w,
     }
 }
 
-/*
- * 4x4 block-sparse GEMM: 4-row tile + 4-column NEON + OpenMP over row tiles.
- *
- * Each OpenMP iteration owns one independent tile of four output rows.
- * For every output-column group it keeps one float32x4_t accumulator per row
- * (acc0..acc3 = the 4x4 output tile). Each 4-value weight row r of a stored
- * block is loaded once with vld1q_f32 and reused by four FMAs, one per tile
- * row. vfmaq_n_f32(acc, wv, x) computes acc + wv * x with the scalar x
- * broadcast to the four lanes inside the fused multiply-add: the same math as
- * vfmaq_f32(acc, vdupq_n_f32(x), wv), without a separate dup.
- *
- * This formulation was chosen by measurement on the Raspberry Pi 4 with the
- * course toolchain (GCC, -O0), see experiments/try_combined_variants.sh:
- * 1-thread latency 26.2 ms vs 29.6 ms (vdupq + vfmaq) and 50.3 ms
- * (vfmaq_laneq_f32), with linear scaling to 6.6 ms on 4 threads.
- * The block traversal and ordering are the same as in the other kernels.
- */
 int gemm_sparse_openmp_tiled_neon(const float *a, const sparse_weights *w,
-                                  float *c, size_t m) {
+                                  float *c, size_t m)
+{
     if (!a || !w || !c)
         return SPARSE_ERROR;
 
@@ -93,17 +74,12 @@ int gemm_sparse_openmp_tiled_neon(const float *a, const sparse_weights *w,
                     // load the 4 weights of subgroup row into one NEON vector
                     const float32x4_t wv = vld1q_f32(w_blk + 4 * r);
 
-                    // access the matching input value, multiply the single input value
-                    // for all 4 weight values in the same row
-                    // no need for vdupq_n_f32 --> vfmaq_n_f32 specifically accepts a
-                    // scalar and uses it for all four lanes
-                    //acc0 = vfmaq_n_f32(acc0, wv, a0[k0 + r]);
+                    // access the matching input value, broadcast it across all 4 lanes
+                    // with vdupq_n_f32, and multiply-accumulate it with the 4 weight
+                    // values in the same row using vfmaq_f32
                     acc0 = vfmaq_f32(acc0, vdupq_n_f32(a0[k0 + r]), wv);
-                    //acc1 = vfmaq_n_f32(acc1, wv, a1[k0 + r]);
                     acc1 = vfmaq_f32(acc1, vdupq_n_f32(a1[k0 + r]), wv);
-                    //acc2 = vfmaq_n_f32(acc2, wv, a2[k0 + r]);
                     acc2 = vfmaq_f32(acc2, vdupq_n_f32(a2[k0 + r]), wv);
-                    //acc3 = vfmaq_n_f32(acc3, wv, a3[k0 + r]);
                     acc3 = vfmaq_f32(acc3, vdupq_n_f32(a3[k0 + r]), wv);
                 }
             }

@@ -23,7 +23,8 @@ static void sparse_row_scalar(const float *a_row, const sparse_weights *w,
 }
 
 int gemm_sparse_tiled(const float *a, const sparse_weights *w, float *c,
-                      size_t m) {
+                      size_t m)
+{
     // check pointer are not null
     if (!a || !w || !c)
         return SPARSE_ERROR;

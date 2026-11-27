@@ -1,15 +1,8 @@
 #include "sparse_gemm.h"
 
-/*
- * 4x4 block-sparse GEMM, scalar inner loops, OpenMP over output rows.
- *
- * Every iteration i owns row i of C exclusively and only reads A and the
- * shared (read-only) sparse weights, so the rows are independent and no
- * synchronisation is required. No tiling and no NEON in this version.
- * The thread count is set by the caller (omp_set_num_threads).
- */
-int gemm_sparse_openmp(const float *a, const sparse_weights *w, float *c,
-                       size_t m) {
+
+int gemm_sparse_openmp(const float *a, const sparse_weights *w, float *c, size_t m)
+{
     if (!a || !w || !c)
         return SPARSE_ERROR;
 
