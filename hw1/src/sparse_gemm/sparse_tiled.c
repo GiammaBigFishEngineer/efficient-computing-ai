@@ -66,13 +66,10 @@ int gemm_sparse_tiled(const float *a, const sparse_weights *w, float *c,
                 const size_t k0 = 4 * (size_t)w->block_row_idx[p];
                 const float *w_blk = w->block_values + 16 * p;
 
-                /*
-                now you identified: the input whole 4 rows AND the weight subgroup
-                iterate on the rows of the weight subgroup and access each value in the
-                subgroup row AND the matching input values --> perform the matrix
-                product fixing the weight row and access the input values in the
-                matching column
-                */
+                
+                // identified input 4 rows and weight subgroup
+                // iterate on the rows of the weight subgroup 
+                // reuse each weight row across all 4 input rows
                 for (size_t r = 0; r < 4; ++r) {
                 // obtain weight row values
                 const float w0 = w_blk[4 * r + 0];
@@ -88,8 +85,7 @@ int gemm_sparse_tiled(const float *a, const sparse_weights *w, float *c,
                 const float x2 = a2[k0 + r];
                 const float x3 = a3[k0 + r];
 
-                // perform all multiplications and cumulative sums
-                // each input row has its own output sums --> do not sum rows together
+                // 4x4 product update
                 // data reuse: same weights reused across the 4 input rows
                 acc[0][0] += x0 * w0;
                 acc[0][1] += x0 * w1;
@@ -124,7 +120,7 @@ int gemm_sparse_tiled(const float *a, const sparse_weights *w, float *c,
                 actually reach row i0+t by skipping the previous rows --> *n
                 (n = number of output columns, each full row has n elements)
 
-                select correct column: select
+                select correct column:
                 select the correct output group of 4 columns
                 and get its first column idx --> + 4*g
                 select the single column within that group --> +col
@@ -132,15 +128,9 @@ int gemm_sparse_tiled(const float *a, const sparse_weights *w, float *c,
                 c[(i0 + t) * n + 4 * g + col] = acc[t][col];
                 }
             }
-
-            /* iterate on the remaining values we cannot handle with tiling
-            use scalar sparse GEMM:
-                address of the start of input row i
-                address of the start of output row i
-                sparse weights
-            */
-            }
         }
+    }
+    // Handle remaining rows if m is not a multiple of TM
     for (size_t i = m_full; i < m; ++i)
         sparse_row_scalar(a + i * k, w, c + i * n);
 

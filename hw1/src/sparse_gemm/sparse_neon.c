@@ -44,8 +44,8 @@ int gemm_sparse_neon(const float *a, const sparse_weights *w, float *c, size_t m
                 acc = vfmaq_f32(acc, vdupq_n_f32(a_blk[3]), vld1q_f32(w_blk + 12));
             }
 
-        // store the 4 completed output values before moving to the next group
-        vst1q_f32(c_row + 4 * g, acc);
+            // store the 4 completed output values before moving to the next group
+            vst1q_f32(c_row + 4 * g, acc);
         }
     }
     return SPARSE_OK;

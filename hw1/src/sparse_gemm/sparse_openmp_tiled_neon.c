@@ -34,7 +34,7 @@ int gemm_sparse_openmp_tiled_neon(const float *a, const sparse_weights *w,
     #ifdef _OPENMP
     #pragma omp parallel for
     #endif
-    // iterate on each input tile (group of 4 WHOLE rows)
+    // iterate on each input tile (group of 4 rows)
     for (size_t t = 0; t < tiles; ++t) {
         // i0: index of the first input row of tile t
         // point to the first element of each whole input row of the tile
@@ -92,8 +92,7 @@ int gemm_sparse_openmp_tiled_neon(const float *a, const sparse_weights *w,
         }
     }
 
-    // process the remaining values we cannot handle
-    // through tiling individually with NEON
+    // process remaining rows with single-row NEON
     for (size_t i = tiles * TM; i < m; ++i)
         sparse_row_neon(a + i * k, w, c + i * n);
 
